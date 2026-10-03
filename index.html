@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Geologic H₂ inverse map: required well deliverability</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EDF1EF; --panel:#E3E9E6; --ink:#17232B; --muted:#56676E; --rule:#C3CDCA; --accent:#2C6C84; --warn:#8E2C48;
+  --ramp0:#1E4B58; --ramp1:#3E8C7B; --ramp2:#B9D18F; --ramp3:#F0DA9E; --ramp4:#D08A6A; --ramp5:#7E2A4A;
+  --font:'Barlow',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --cond:'Barlow Semi Condensed','Barlow',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --paper:#111A1F; --panel:#18232A; --ink:#E1E8E6; --muted:#93A4A9; --rule:#2C3A42; --accent:#6FB0C6; --warn:#E07A95; } }
+:root[data-theme="dark"]{ --paper:#111A1F; --panel:#18232A; --ink:#E1E8E6; --muted:#93A4A9; --rule:#2C3A42; --accent:#6FB0C6; --warn:#E07A95; }
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.5;font-variant-numeric:tabular-nums}
+.wrap{max-width:1320px;margin:0 auto;padding:28px 24px 48px}
+header h1{font-size:30px;line-height:1.15;font-weight:600;margin:0 0 8px;letter-spacing:-0.01em;max-width:34ch}
+header p{margin:0;max-width:78ch;color:var(--muted)}
+header .check{margin-top:10px;font-size:13.5px;color:var(--muted)}
+header .check b{color:var(--ink);font-weight:600}
+.layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:32px;margin-top:26px}
+aside{border-right:1px solid var(--rule);padding-right:24px}
+fieldset{border:0;margin:0 0 22px;padding:0}
+legend{font-family:var(--cond);font-weight:600;font-size:15px;padding:0;margin-bottom:8px;color:var(--ink)}
+.ctl{margin:0 0 12px}
+.ctl label{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;color:var(--muted);gap:8px}
+.ctl label output{color:var(--ink);font-weight:600;font-size:14px}
+input[type=range]{width:100%;accent-color:var(--accent);margin:4px 0 0}
+input[type=number]{width:84px;font:inherit;font-size:14px;color:var(--ink);background:var(--paper);border:1px solid var(--rule);border-radius:3px;padding:2px 6px}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 10px}
+button{font:inherit;font-size:12.5px;color:var(--ink);background:transparent;border:1px solid var(--rule);border-radius:3px;padding:3px 8px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hint{font-size:12.5px;color:var(--muted);margin:-4px 0 10px}
+.viz-top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
+.viz-top h2{font-size:18px;font-weight:600;margin:0}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:5px 12px;font-size:13.5px}
+.mapwrap{position:relative;width:100%}
+canvas{display:block;width:100%}
+#map{height:min(62vh,560px);min-height:380px;cursor:crosshair}
+#lines{height:330px}
+.legend{display:flex;flex-wrap:wrap;align-items:center;gap:18px;font-size:12.5px;color:var(--muted);margin:8px 0 0}
+.legend canvas{width:260px;height:30px}
+.hatch{display:inline-block;width:22px;height:12px;vertical-align:-2px;margin-right:6px;border:1px solid var(--warn);
+  background:repeating-linear-gradient(135deg,transparent 0 3px,var(--warn) 3px 4px)}
+.below{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:32px;margin-top:26px}
+.readout h3,.chart h3{font-size:16px;font-weight:600;margin:0 0 8px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;font-size:14px;margin:0}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-weight:500}
+.kv dd.flag{color:var(--warn)}
+.big{font-size:28px;font-weight:600;line-height:1.1;margin:4px 0 2px}
+.big small{font-size:15px;font-weight:500;color:var(--muted)}
+.bar{display:flex;height:16px;margin:12px 0 6px;border-radius:2px;overflow:hidden}
+.bar span{display:block;height:100%}
+.parts{font-size:13px;display:grid;grid-template-columns:12px 1fr auto;gap:2px 8px;align-items:center}
+.parts i{width:10px;height:10px;display:inline-block;border-radius:1px}
+.notes{margin-top:40px;border-top:1px solid var(--rule);padding-top:18px;max-width:86ch}
+.notes h2{font-size:18px;font-weight:600;margin:0 0 6px}
+.notes p,.notes li{font-size:14px;color:var(--ink)}
+.notes ul{padding-left:18px;margin:6px 0}
+.notes .muted{color:var(--muted)}
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr} aside{border-right:0;padding-right:0;border-bottom:1px solid var(--rule);padding-bottom:8px;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:0 24px}
+  .below{grid-template-columns:1fr} header h1{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Minimum well deliverability for geologic hydrogen at a price cutoff</h1>
+  <p>Inverse of an H2A-basis LCOH model of a free-gas geologic hydrogen development. For every field size and target depth, the map gives the initial wellhead H₂ rate each producer must deliver for the break-even price to equal the cutoff. Everything not on the left is held at the reference TEA's defaults.</p>
+  <p class="check" id="check"></p>
+</header>
+<div class="layout">
+<aside aria-label="Assumptions you can change">
+  <fieldset><legend>Price cutoffs</legend>
+    <div class="ctl"><label for="T"><span>Plant-gate cutoff ($/kg)</span> <input type="number" id="T" value="2.00" step="0.05" min="0.2" max="10"></label></div>
+    <div class="ctl"><label for="dl"><span>Delivery adder ($/kg)</span> <output id="dl_o"></output></label>
+      <input type="range" id="dl" min="0" max="1.9" step="0.05" value="0.50"></div>
+    <div class="presets" data-for="dl">
+      <button data-v="0.15">Adjacent pipeline</button><button data-v="0.75">Regional pipeline</button><button data-v="1.5">Tube trailer</button></div>
+    <p class="hint">Delivered cutoff = plant-gate cutoff − adder. Presets are illustrative.</p>
+  </fieldset>
+  <fieldset><legend>Exploration and decline</legend>
+    <div class="ctl"><label for="pos"><span>Chance of success</span> <output id="pos_o"></output></label>
+      <input type="range" id="pos" min="0" max="1" step="0.001"></div>
+    <div class="ctl"><label for="Di"><span>Initial decline, Dᵢ (per yr)</span> <output id="Di_o"></output></label>
+      <input type="range" id="Di" min="0.02" max="0.8" step="0.01" value="0.05"></div>
+    <div class="ctl"><label for="b"><span>Arps b-factor</span> <output id="b_o"></output></label>
+      <input type="range" id="b" min="0" max="1.2" step="0.05" value="0.2"></div>
+    <div class="presets" data-group="decl">
+      <button data-di="0.05" data-b="0.2">Reference</button><button data-di="0.2" data-b="0.5">Moderate</button><button data-di="0.5" data-b="0.9">Steep</button></div>
+  </fieldset>
+  <fieldset><legend>Wells</legend>
+    <div class="ctl"><label for="s"><span>Well spacing (m)</span> <output id="s_o"></output></label>
+      <input type="range" id="s" min="300" max="1200" step="25" value="600"></div>
+    <p class="hint">Sets lease area per producer (leasing and seismic scale with N × spacing²).</p>
+    <div class="ctl"><label for="beta"><span>Well cost vs depth exponent</span> <output id="beta_o"></output></label>
+      <input type="range" id="beta" min="1" max="1.8" step="0.01" value="1"></div>
+    <div class="presets" data-for="beta"><button data-v="1">Linear (reference)</button><button data-v="1.61">O&amp;G power fit</button></div>
+  </fieldset>
+  <fieldset><legend>Resource check</legend>
+    <div class="ctl"><label for="hmax"><span>Max credible φ·S<sub>g</sub>·h (m)</span> <output id="hmax_o"></output></label>
+      <input type="range" id="hmax" min="0.5" max="20" step="0.5" value="5"></div>
+    <div class="ctl"><label for="rf"><span>Recovery factor</span> <output id="rf_o"></output></label>
+      <input type="range" id="rf" min="0.4" max="0.95" step="0.05" value="0.8"></div>
+    <div class="ctl"><label for="tg"><span>Geothermal gradient (°C/km)</span> <output id="tg_o"></output></label>
+      <input type="range" id="tg" min="20" max="45" step="1" value="30"></div>
+    <div class="ctl"><label for="ov"><span>Pressure ÷ hydrostatic</span> <output id="ov_o"></output></label>
+      <input type="range" id="ov" min="1" max="1.6" step="0.05" value="1"></div>
+    <p class="hint">Hatched cells need more H₂ in place under each well's drainage area than this thickness can hold.</p>
+  </fieldset>
+  <button id="reset">Reset to reference case</button>
+</aside>
+<section aria-label="Results">
+  <div class="viz-top">
+    <h2 id="maptitle">Required initial wellhead rate per producer</h2>
+    <div class="seg" role="group" aria-label="Cutoff shown on the map">
+      <button id="m_pg" aria-pressed="true">Plant gate</button><button id="m_dl" aria-pressed="false">Delivered</button></div>
+  </div>
+  <div class="mapwrap"><canvas id="map" aria-label="Map of required initial rate by producer count and depth" role="img"></canvas></div>
+  <div class="legend"><span>t H₂/yr per producer</span><canvas id="cbar" width="260" height="30"></canvas>
+    <span><span class="hatch"></span>exceeds resource check</span><span>○ Reference field, 69 wells at 1 km (assumes 900 t/yr)</span><span>Hover to inspect, click to pin.</span></div>
+  <div class="below">
+    <div class="readout" aria-live="polite">
+      <h3 id="ro_h">Selected point</h3>
+      <div class="big" id="ro_q"></div>
+      <dl class="kv" id="ro_kv"></dl>
+      <div class="bar" id="ro_bar"></div>
+      <div class="parts" id="ro_parts"></div>
+    </div>
+    <div class="chart">
+      <h3>Required rate vs field size</h3>
+      <canvas id="lines" role="img" aria-label="Required initial rate versus number of producers at four depths"></canvas>
+      <div class="legend"><span>Solid: plant gate</span><span>Dashed: delivered</span></div>
+    </div>
+  </div>
+</section>
+</div>
+<section class="notes">
+  <h2>What is fixed and how the map is built</h2>
+  <p>The engine is a line-for-line port of the reference TEA's cash flow (ProFAST method), fed by a parametric schedule calibrated to its 1 km and 2 km free-gas cases. Break-even price is cost-side NPV divided by revenue-side NPV per $/kg. Revenue scales exactly with q₀, and cost scales as a + b·q₀<sup>0.6</sup> + c·q₀ (surface plant and its O&amp;M on nameplate<sup>0.6</sup>, utilities per kg), so each cell is solved in closed form from three evaluations.</p>
+  <ul>
+    <li>Financial basis at reference defaults: 10.2% real after-tax ROE, D/E 0.62, 4.4% real interest, 25.7% tax, 7-yr MACRS, 3 months cash on hand, 14.5% royalty, 100% availability, unsubsidized, 2026 dollars.</li>
+    <li>Timing as in the reference TEA: pre-discovery spend in years 0 to 2, producers drilled in year 3, surface plant in year 4, 30 years of production from year 5.</li>
+    <li>Production per producer follows Arps hyperbolic decline from q₀ (initial wellhead rate). Sold H₂ is 0.8955 × wellhead, a factor fitted to the reference production schedule (it reproduces that profile with Dᵢ = 0.05, b = 0.2 to within 0.05%). I read it as PSA recovery plus plant losses.</li>
+    <li>All pre-discovery spend is divided by chance of success, as in the reference TEA. Leasing/contractor/approval ($185k per producer at 600 m) and 2D seismic scale with field area = N × spacing². Drilling permits scale with N. Desk study, aerial survey and well-site surveys are fixed. Exploration drills 3 wells at producer cost plus $0.75M mobilization. The area scaling is my assumption, not something the reference TEA states.</li>
+    <li>Producer cost = $20k + $750k × depth(km)<sup>β</sup>. β = 1 reproduces the reference 2 km case. A power-law fit to oil and gas well costs gives β ≈ 1.6.</li>
+    <li>Surface plant = ($6.86M + $2.16M per km of depth) × (nameplate / 148.7 t/d)<sup>0.6</sup>. Maintenance, property tax, environmental and the surface part of G&amp;A are the reference TEA's fractions of surface capital. Labor ($1.98M/yr) and 65% G&amp;A on labor are fixed regardless of field size, as in the reference TEA.</li>
+    <li>Resource check: required φ·S<sub>g</sub>·h = 30-yr wellhead cumulative ÷ (spacing² × ρ<sub>H₂</sub> × recovery factor). ρ<sub>H₂</sub> uses 10 MPa/km hydrostatic pressure × the overpressure ratio, 15 °C surface temperature plus the gradient, and Z from a second virial coefficient of 15 cm³/mol. It is a lower bound because production continues past year 30.</li>
+    <li>Delivered cutoff subtracts a constant adder. Delivery cost actually depends on throughput, distance and wellhead pressure. Published estimates span roughly $0.10 to $4/kg across those (Yang and Ogden, UC Davis).</li>
+  </ul>
+  <p class="muted">Not modeled: raw-gas purity and its effect on PSA recovery and surface cost, helium or other by-product credits, compression for delivery as a function of depth, infill interference, and lead-time changes.</p>
+</section>
+</div>
+<script>
+// ---- Engine: exact port of the reference TEA cash flow + calibrated parametric schedule ----
+const FIN={roe:0.102,de:0.62,ir:0.044,tax:0.257,months:3,roy:0.145,avail:1.0,wo:0.02,surfrep:0.15/7,pa:76000,
+ macrs:[0.25,0.2143,0.1531,0.1093,0.0875,0.0874,0.0875,0.0109]};
+const K={desk:750000,lease_pw:185328.75,permit_pw:939.1304347826087,aerial:412500,seis_pw:1083.3333333333333,
+ mob:750000,nexp:3,drill_km:750255.333,well_fixed:20000,surveys:57600,surf_a:6859822.4,surf_b:2161067.25,
+ np_ref:148695.8226159844,labor:1980000,maint:0.01648349862856184,envr:0.005494499542263304,ga_labor:0.65,
+ elec_fix:3184925.326140665,elec_kg:0.0022689475620353543,ng_kg:0.00015685492600621406,pe:0.086,png:10,
+ eta:0.8955214106132156};
+const NY=35, FP=5, FINAL=34;
+const DF=new Float64Array(NY); for(let k=0;k<NY;k++) DF[k]=1/Math.pow(1+FIN.roe,k);
+function cumArps(t,q0,Di,b){ if(b<1e-9) return q0/Di*(1-Math.exp(-Di*t)); if(Math.abs(b-1)<1e-6) return q0/Di*Math.log(1+Di*t); return q0/((1-b)*Di)*(1-Math.pow(1+b*Di*t,1-1/b)); }
+// cost components tracked separately so LCOH can be split exactly (the model is linear in every cost line)
+const COMP=['Exploration (risked)','Well development','Surface plant','Workovers & replacements','Fixed O&M','Utilities','Plug & abandon'];
+function schedule(p){
+  const N=p.N, z=p.z, a=(p.s/600)**2, prod=new Float64Array(NY);
+  let prev=0; for(let j=1;j<=30;j++){ const c=cumArps(j,p.q0,p.Di,p.b); prod[FP+j-1]=N*K.eta*(c-prev); prev=c; }
+  let peak=0; for(let k=0;k<NY;k++) if(prod[k]>peak) peak=prod[k];
+  const nameplate=peak/365, drill=K.drill_km*Math.pow(z,p.beta);
+  const expl=new Float64Array(NY);
+  expl[0]=(K.desk+N*K.lease_pw*a+N*K.permit_pw)/p.pos;
+  expl[1]=(K.aerial+N*K.seis_pw*a)/p.pos;
+  expl[2]=(K.mob+K.nexp*drill+K.surveys)/p.pos;
+  const wellCap=N*(drill+K.well_fixed);
+  const surfCap=(K.surf_a+K.surf_b*z)*Math.pow(nameplate/K.np_ref,0.6);
+  const fixedOM=K.labor*(1+K.ga_labor)+surfCap*(2*K.maint+2*K.envr);
+  return {prod,expl,wellCap,surfCap,fixedOM,nameplate,N};
+}
+// returns {C:[per component PV-equivalent cost], R} with LCOH = sum(C)/R
+function solve(s,parts){
+  const out=parts?new Float64Array(COMP.length):null;
+  // revenue side R = NPV(P=1)-NPV(P=0): only kg-driven terms
+  // cost side via NPV(P=0) for each component (linear)
+  function npv0(capex,opex){ // opex already includes operating fraction (=1 in operating years here)
+    let D=0; for(let k=0;k<NY;k++) D+=capex[k];
+    const ds=FIN.de/(1+FIN.de); let bal=0, prevBal=0, prevRes=0, v=0;
+    for(let k=0;k<NY;k++){
+      const debtIn=capex[k]*ds; prevBal=bal; bal+=debtIn;
+      const interest=k===0?0:prevBal*FIN.ir;
+      const i=k-FP; const dep=(i>=0&&i<FIN.macrs.length)?D*FIN.macrs[i]:0;
+      const ti=-opex[k]-interest-dep, tax=ti*FIN.tax;
+      const res=k>=FINAL?0:FIN.months/12*(opex[k]+interest+tax);
+      const repay=k===FINAL?bal:0;
+      const inv=(ti-tax+dep)-capex[k]+debtIn-repay-(res-prevRes); prevRes=res;
+      v+=inv*DF[k];
+    } return v;
+  }
+  let R=0, prevRes=0;
+  for(let k=0;k<NY;k++){ const rev=s.prod[k]*FIN.avail; const ti=rev*(1-FIN.roy); const tax=ti*FIN.tax;
+    const res=k>=FINAL?0:FIN.months/12*tax; R+=((ti-tax)-(res-prevRes))*DF[k]; prevRes=res; }
+  const Z=()=>new Float64Array(NY);
+  const caps=[s.expl, Z(), Z(), Z(), Z(), Z(), Z()], opx=[Z(),Z(),Z(),Z(),Z(),Z(),Z()];
+  caps[1][3]=s.wellCap; caps[2][4]=s.surfCap;
+  for(let k=FP;k<NY;k++){ const on=s.prod[k]>0;
+    if(on){ opx[3][k]=s.wellCap*FIN.wo+s.surfCap*FIN.surfrep; opx[4][k]=s.fixedOM;
+      opx[5][k]=(K.elec_fix*s.nameplate/K.np_ref+K.elec_kg*s.prod[k])*K.pe+K.ng_kg*s.prod[k]*K.png; } }
+  opx[6][FINAL]=s.N*FIN.pa;
+  let C=0; for(let c=0;c<COMP.length;c++){ const v=-npv0(caps[c],opx[c]); C+=v; if(out) out[c]=v/R; }
+  return {lcoh:C/R, parts:out};
+}
+// NOTE: depreciation uses total capex D, so splitting by component is exact only because each component's
+// own depreciation scales with its own capex (MACRS is linear in D). npv0 per component is therefore additive.
+function lcoh(p,parts){ return solve(schedule(p),parts); }
+function qStar(p,T){ // minimum initial wellhead rate (kg/yr per producer) giving LCOH = T; monotone in q0
+  let lo=Math.log10(1e3), hi=Math.log10(3e8);
+  const f=lq=>lcoh({...p,q0:Math.pow(10,lq)}).lcoh-T;
+  if(f(hi)>0) return Infinity; if(f(lo)<0) return 1e3;
+  for(let it=0;it<44;it++){ const m=(lo+hi)/2; if(f(m)>0) lo=m; else hi=m; }
+  return Math.pow(10,(lo+hi)/2);
+}
+function rhoH2(z,g){ const P=(0.101325+g.pgrad*z*g.over)*1e6, T=273.15+15+g.tgrad*z, R=8.314462;
+  const Z=1+15e-6*P/(R*T); return P*0.002016/(Z*R*T); }
+function hReq(p,g){ // HCPV thickness (phi*Sg*h, m) needed to hold the 30-yr wellhead cumulative of one well
+  const cum30=cumArps(30,p.q0,p.Di,p.b); return cum30/((p.s*p.s)*rhoH2(p.z,g)*g.rf); }
+if(typeof module!=='undefined') module.exports={lcoh,qStar,rhoH2,hReq,cumArps,COMP,K};
+// Fast inverse: for fixed everything-but-q0, R = r1*q0 exactly and C = A + B*q0^0.6 + U*q0 exactly
+// (surface capex and its O&M scale with nameplate^0.6, utilities with q0). Three evaluations pin A,B,U.
+function coeffs(p){
+  const qs=[1e5,1e6,1e7], C=[], R=[];
+  for(const q of qs){ const s=schedule({...p,q0:q}); const r=solve(s,false); 
+    // recover R by evaluating revenue side alone: lcoh=C/R; get R through a second call with known scaling
+    C.push(r.lcoh); }
+  // R is linear in q0 with no intercept; compute r1 directly
+  const s1=schedule({...p,q0:1}); let R1=0, prevRes=0;
+  for(let k=0;k<NY;k++){ const ti=s1.prod[k]*FIN.avail*(1-FIN.roy), tax=ti*FIN.tax; const res=k>=FINAL?0:FIN.months/12*tax; R1+=((ti-tax)-(res-prevRes))*DF[k]; prevRes=res; }
+  const Cabs=C.map((l,i)=>l*R1*qs[i]);
+  const M=qs.map(q=>[1,Math.pow(q,0.6),q]);
+  // solve 3x3
+  const a=M.map((r,i)=>[...r,Cabs[i]]);
+  for(let i=0;i<3;i++){ let m=i; for(let j=i+1;j<3;j++) if(Math.abs(a[j][i])>Math.abs(a[m][i])) m=j; [a[i],a[m]]=[a[m],a[i]];
+    for(let j=0;j<3;j++) if(j!==i){ const f=a[j][i]/a[i][i]; for(let k=i;k<4;k++) a[j][k]-=f*a[i][k]; } }
+  return {A:a[0][3]/a[0][0],B:a[1][3]/a[1][1],U:a[2][3]/a[2][2],r1:R1};
+}
+function qFromCoeffs(c,T){
+  const g=x=>c.A+c.B*Math.pow(x,0.6)+(c.U-T*c.r1)*x;
+  if(c.U>=T*c.r1) return Infinity;
+  let lo=0, hi=9.5; if(g(Math.pow(10,hi))>0) return Infinity;
+  for(let it=0;it<60;it++){ const m=(lo+hi)/2; if(g(Math.pow(10,m))>0) lo=m; else hi=m; }
+  return Math.pow(10,(lo+hi)/2);
+}
+if(typeof module!=='undefined'){ module.exports.coeffs=coeffs; module.exports.qFromCoeffs=qFromCoeffs; }
+
+</script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const DEF={posv:Math.log(0.2/0.03)/Math.log(20),Di:0.05,b:0.2,s:600,beta:1,T:2,dl:0.5,hmax:5,rf:0.8,tg:30,ov:1};
+const posOf=v=>0.03*Math.pow(20,v);
+const NMIN=5,NMAX=400,NX=60,ZS=[];for(let z=1;z<=4.0001;z+=0.1)ZS.push(+z.toFixed(2));
+const NS=[];for(let i=0;i<NX;i++)NS.push(Math.pow(10,Math.log10(NMIN)+i*(Math.log10(NMAX)-Math.log10(NMIN))/(NX-1)));
+const QLO=50,QHI=5000; // t/yr colour range
+const RAMP=['#1E4B58','#3E8C7B','#B9D18F','#F0DA9E','#D08A6A','#7E2A4A'].map(h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16)));
+const PART_COL=['#2C6C84','#5E9E86','#B9C98A','#D9B970','#C98466','#8D5A7A','#6E7B80'];
+const DCOL=['#3A86A8','#4FA38C','#C49A3A','#C2506F'];
+let mode='pg', coefKey='', CO=null, sel={N:69,z:1}, hover=null;
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+function readP(){return{pos:posOf(+$('pos').value),Di:+$('Di').value,b:+$('b').value,s:+$('s').value,beta:+$('beta').value};}
+function readG(){return{pgrad:10,tgrad:+$('tg').value,over:+$('ov').value,rf:+$('rf').value};}
+function cuts(){const T=+$('T').value||2, d=+$('dl').value; return{pg:T,dl:Math.max(0.01,T-d)};}
+function rampRGB(t){t=Math.max(0,Math.min(1,t));const x=t*(RAMP.length-1),i=Math.min(RAMP.length-2,Math.floor(x)),f=x-i;
+  return RAMP[i].map((c,k)=>Math.round(c+(RAMP[i+1][k]-c)*f));}
+const tOf=q=>isFinite(q)?(Math.log10(q/1e3)-Math.log10(QLO))/(Math.log10(QHI)-Math.log10(QLO)):1;
+function fmtQ(q){if(!isFinite(q))return'not reachable';const t=q/1e3;return t>=1000?(t/1000).toFixed(2)+' kt':(t>=100?t.toFixed(0):t.toFixed(1))+' t';}
+function ensureCoeffs(p){const key=JSON.stringify(p);if(key===coefKey)return;coefKey=key;
+  CO=ZS.map(z=>NS.map(N=>coeffs({...p,N,z,q0:1e6})));}
+function grids(p,g){const T=cuts()[mode];
+  const Q=CO.map(r=>r.map(c=>qFromCoeffs(c,T)));
+  const H=Q.map((r,j)=>r.map((q,i)=>isFinite(q)?hReq({...p,q0:q,N:NS[i],z:ZS[j]},g):Infinity));
+  return{Q,H};}
+// ---------- canvas helpers
+function setup(cv){const r=cv.getBoundingClientRect(),d=window.devicePixelRatio||1;cv.width=Math.round(r.width*d);cv.height=Math.round(r.height*d);
+  const c=cv.getContext('2d');c.setTransform(d,0,0,d,0,0);return{c,w:r.width,h:r.height};}
+function marching(G,level,cb){ // G[j][i] scalar; emits segments in grid coords (i,j)
+  for(let j=0;j<G.length-1;j++)for(let i=0;i<G[0].length-1;i++){
+    const v=[G[j][i],G[j][i+1],G[j+1][i+1],G[j+1][i]];if(v.some(x=>!isFinite(x)))continue;
+    const pts=[],E=[[0,1,[i,j],[i+1,j]],[1,2,[i+1,j],[i+1,j+1]],[2,3,[i+1,j+1],[i,j+1]],[3,0,[i,j+1],[i,j]]];
+    for(const[a,b,pa,pb]of E){if((v[a]-level)*(v[b]-level)<0){const f=(level-v[a])/(v[b]-v[a]);pts.push([pa[0]+(pb[0]-pa[0])*f,pa[1]+(pb[1]-pa[1])*f]);}}
+    if(pts.length===2)cb(pts[0],pts[1]);else if(pts.length===4){cb(pts[0],pts[1]);cb(pts[2],pts[3]);}
+  }}
+let MAPGEOM=null;
+function drawMap(p,g,Gd){
+  const {c,w,h}=setup($('map')),M={l:58,r:14,t:12,b:42},pw=w-M.l-M.r,ph=h-M.t-M.b;
+  const lx=n=>M.l+(Math.log10(n)-Math.log10(NMIN))/(Math.log10(NMAX)-Math.log10(NMIN))*pw, yz=z=>M.t+(z-0.95)/3.1*ph;
+  const gx=i=>M.l+i/(NX-1)*pw, gy=j=>yz(1+j*3/(ZS.length-1));
+  MAPGEOM={M,pw,ph,lx,yz};
+  c.clearRect(0,0,w,h);
+  // heat
+  const off=document.createElement('canvas');off.width=NX;off.height=ZS.length;const oc=off.getContext('2d'),im=oc.createImageData(NX,ZS.length);
+  Gd.Q.forEach((r,j)=>r.forEach((q,i)=>{const k=(j*NX+i)*4,[R,G,B]=rampRGB(tOf(q));im.data[k]=R;im.data[k+1]=G;im.data[k+2]=B;im.data[k+3]=255;}));
+  oc.putImageData(im,0,0);
+  c.save();c.beginPath();c.rect(M.l,M.t,pw,ph);c.clip();c.imageSmoothingEnabled=true;
+  const dx=pw/(NX-1),dy=yz(1.1)-yz(1);c.drawImage(off,M.l-dx/2,yz(1)-dy/2,pw+dx,yz(4)-yz(1)+dy);
+  // hatch
+  const warn=css('--warn'),ink=css('--ink'),muted=css('--muted'),paper=css('--paper');
+  const pat=document.createElement('canvas');pat.width=pat.height=8;const pc=pat.getContext('2d');
+  pc.strokeStyle=warn;pc.globalAlpha=0.85;pc.lineWidth=1.2;pc.beginPath();pc.moveTo(0,8);pc.lineTo(8,0);pc.moveTo(-2,2);pc.lineTo(2,-2);pc.moveTo(6,10);pc.lineTo(10,6);pc.stroke();
+  c.fillStyle=c.createPattern(pat,'repeat');const hm=+$('hmax').value;
+  c.beginPath();Gd.H.forEach((r,j)=>r.forEach((hv,i)=>{if(hv>hm)c.rect(gx(i)-dx/2,gy(j)-dy/2,dx+0.5,dy+0.5);}));c.fill();
+  // contours of q
+  const L=Gd.Q.map(r=>r.map(q=>isFinite(q)?Math.log10(q/1e3):Infinity));
+  c.lineWidth=1;c.strokeStyle='rgba(20,30,36,0.55)';c.font='600 11.5px '+css('--cond');
+  const levels=[100,150,200,300,500,700,1000,1500,2000,3000];
+  for(const lv of levels){const segs=[];marching(L,Math.log10(lv),(a,b)=>segs.push([a,b]));if(!segs.length)continue;
+    c.beginPath();for(const[a,b]of segs){c.moveTo(gx(a[0]),gy(a[1]));c.lineTo(gx(b[0]),gy(b[1]));}c.stroke();
+    let best=null,bs=-1e9;for(const s of segs){const xx=gx(s[0][0]),yy=gy(s[0][1]);if(xx<M.l+22||xx>M.l+pw-22||yy<M.t+12||yy>M.t+ph-12)continue;const sc=-Math.abs(s[0][0]-NX*0.72)-Math.abs(s[0][1]-ZS.length*0.45)*1.5;if(sc>bs){bs=sc;best=s;}}
+    if(!best)continue;
+    const X=gx(best[0][0]),Y=gy(best[0][1]),txt=String(lv),tw=c.measureText(txt).width;
+    c.fillStyle='rgba(237,241,239,0.88)';c.fillRect(X-tw/2-3,Y-8,tw+6,15);c.fillStyle='#17232B';c.textAlign='center';c.textBaseline='middle';c.fillText(txt,X,Y);}
+  // resource boundary
+  c.strokeStyle=warn;c.lineWidth=2;c.beginPath();marching(Gd.H.map(r=>r.map(v=>isFinite(v)?Math.log(v):99)),Math.log(hm),(a,b)=>{c.moveTo(gx(a[0]),gy(a[1]));c.lineTo(gx(b[0]),gy(b[1]));});c.stroke();
+  c.restore();
+  // axes
+  c.strokeStyle=css('--rule');c.lineWidth=1;c.strokeRect(M.l+0.5,M.t+0.5,pw-1,ph-1);
+  c.fillStyle=muted;c.font='12.5px '+css('--font');c.textAlign='center';c.textBaseline='top';
+  for(const n of[5,10,20,50,100,200,400]){const X=lx(n);c.fillRect(X,M.t+ph,1,4);c.fillText(n,X,M.t+ph+6);}
+  c.fillText('Producers per field (N)',M.l+pw/2,M.t+ph+22);
+  c.textAlign='right';c.textBaseline='middle';for(const z of[1,1.5,2,2.5,3,3.5,4]){const Y=yz(z);c.fillRect(M.l-4,Y,4,1);c.fillText(z.toFixed(1),M.l-7,Y);}
+  c.save();c.translate(14,M.t+ph/2);c.rotate(-Math.PI/2);c.textAlign='center';c.fillText('Target depth (km)',0,0);c.restore();
+  // base marker + selection
+  const bx=lx(69),by=yz(1);c.strokeStyle='#17232B';c.lineWidth=1.6;c.beginPath();c.arc(bx,by,8,0,7);c.stroke();
+  const pt=hover||sel;const sx=lx(pt.N),sy=yz(pt.z);
+  c.strokeStyle='rgba(23,35,43,0.7)';c.setLineDash([3,3]);c.lineWidth=1;c.beginPath();c.moveTo(sx,M.t);c.lineTo(sx,M.t+ph);c.moveTo(M.l,sy);c.lineTo(M.l+pw,sy);c.stroke();c.setLineDash([]);
+  c.fillStyle='#fff';c.strokeStyle='#17232B';c.lineWidth=1.5;c.beginPath();c.rect(sx-4,sy-4,8,8);c.fill();c.stroke();
+}
+function drawCbar(){const cv=$('cbar'),{c,w,h}=setup(cv);c.clearRect(0,0,w,h);
+  for(let x=0;x<w;x++){const[R,G,B]=rampRGB(x/(w-1));c.fillStyle=`rgb(${R},${G},${B})`;c.fillRect(x,0,1,12);}
+  c.fillStyle=css('--muted');c.font='11px '+css('--font');c.textBaseline='top';
+  for(const v of[50,100,200,500,1000,2000,5000]){const x=(Math.log10(v)-Math.log10(QLO))/(Math.log10(QHI)-Math.log10(QLO))*(w-1);
+    c.textAlign=v===50?'left':v===5000?'right':'center';c.fillRect(x,12,1,3);c.fillText(v>=1000?(v/1000)+'k':v,x,16);}}
+function drawLines(p){
+  const {c,w,h}=setup($('lines')),M={l:54,r:44,t:10,b:38},pw=w-M.l-M.r,ph=h-M.t-M.b,C=cuts();
+  const NL=[];for(let i=0;i<40;i++)NL.push(Math.pow(10,Math.log10(NMIN)+i*(Math.log10(NMAX)-Math.log10(NMIN))/39));
+  const series=[1,2,3,4].map(z=>{const cs=NL.map(N=>coeffs({...p,N,z,q0:1e6}));return{z,pg:cs.map(k=>qFromCoeffs(k,C.pg)/1e3),dl:cs.map(k=>qFromCoeffs(k,C.dl)/1e3)};});
+  let lo=Infinity,hi=0;series.forEach(s=>[...s.pg,...s.dl].forEach(v=>{if(isFinite(v)){lo=Math.min(lo,v);hi=Math.max(hi,v);}}));
+  lo=Math.min(lo,900);hi=Math.max(hi,900);
+  const y0=Math.floor(Math.log10(lo)*2)/2,y1=Math.ceil(Math.log10(hi)*2)/2;
+  const X=n=>M.l+(Math.log10(n)-Math.log10(NMIN))/(Math.log10(NMAX)-Math.log10(NMIN))*pw, Y=v=>M.t+(1-(Math.log10(v)-y0)/(y1-y0))*ph;
+  c.clearRect(0,0,w,h);const rule=css('--rule'),muted=css('--muted');
+  c.strokeStyle=rule;c.lineWidth=1;c.fillStyle=muted;c.font='12px '+css('--font');
+  const ticks=[];for(let e=Math.floor(y0);e<=Math.ceil(y1);e++)for(const m of[1,2,5]){const v=m*Math.pow(10,e);if(Math.log10(v)>=y0-1e-9&&Math.log10(v)<=y1+1e-9)ticks.push(v);}
+  c.textAlign='right';c.textBaseline='middle';for(const v of ticks){const yy=Math.round(Y(v))+0.5;c.beginPath();c.moveTo(M.l,yy);c.lineTo(M.l+pw,yy);c.stroke();c.fillText(v>=1000?(v/1000)+'k':v,M.l-6,yy);}
+  c.textAlign='center';c.textBaseline='top';for(const n of[5,10,20,50,100,200,400]){c.fillText(n,X(n),M.t+ph+6);}
+  c.fillText('Producers per field (N)',M.l+pw/2,M.t+ph+21);
+  c.save();c.translate(12,M.t+ph/2);c.rotate(-Math.PI/2);c.fillText('t/yr per producer',0,-6);c.restore();
+  // reference
+  c.strokeStyle=css('--ink');c.setLineDash([1,3]);c.beginPath();c.moveTo(M.l,Y(900));c.lineTo(M.l+pw,Y(900));c.stroke();c.setLineDash([]);
+  c.fillStyle=css('--ink');c.textAlign='right';c.textBaseline='bottom';c.fillText('Reference assumption, 900 t/yr',M.l+pw-4,Y(900)-3);
+  series.forEach((s,k)=>{for(const kind of['dl','pg']){c.strokeStyle=DCOL[k];c.lineWidth=kind==='pg'?2.2:1.6;c.setLineDash(kind==='pg'?[]:[6,4]);
+      c.beginPath();let on=false;s[kind].forEach((v,i)=>{if(!isFinite(v)){on=false;return;}const xx=X(NL[i]),yy=Y(v);on?c.lineTo(xx,yy):c.moveTo(xx,yy);on=true;});c.stroke();}
+    c.setLineDash([]);const v=s.pg[s.pg.length-1];if(isFinite(v)){c.fillStyle=DCOL[k];c.textAlign='left';c.textBaseline='middle';c.font='600 12px '+css('--font');c.fillText(s.z+' km',M.l+pw+5,Y(v));}});
+}
+function readout(p,g){
+  const pt=hover||sel,C=cuts(),T=C[mode],k=coeffs({...p,N:pt.N,z:pt.z,q0:1e6});
+  const q=qFromCoeffs(k,T),qo=qFromCoeffs(k,mode==='pg'?C.dl:C.pg);
+  $('ro_h').textContent=(hover?'Under cursor':'Selected point')+(sel.N===69&&sel.z===1&&!hover?' (reference field)':'');
+  $('ro_q').innerHTML=fmtQ(q)+'/yr <small>per producer, '+(mode==='pg'?'plant gate $'+T.toFixed(2):'delivered $'+T.toFixed(2)+' at plant gate')+'</small>';
+  const kv=[];const area=pt.N*p.s*p.s/1e6;
+  kv.push(['Producers, depth',Math.round(pt.N)+' wells at '+pt.z.toFixed(1)+' km'],['Field area',area.toFixed(1)+' km²']);
+  if(isFinite(q)){const kgd=q/365;kv.push(['Same rate',Math.round(kgd).toLocaleString()+' kg/d, '+(kgd*415e-6).toFixed(2)+' MMscf/d']);
+    kv.push([mode==='pg'?'Delivered cutoff needs':'Plant-gate cutoff needs',fmtQ(qo)+'/yr']);
+    const eur=cumArps(30,q,p.Di,p.b);kv.push(['30-yr wellhead EUR',(eur/1e6).toFixed(2)+' kt per producer']);
+    const hr=hReq({...p,q0:q,N:pt.N,z:pt.z},g);kv.push(['Needs φ·Sg·h ≥',hr.toFixed(1)+' m ('+'ρ = '+rhoH2(pt.z,g).toFixed(1)+' kg/m³)',hr>+$('hmax').value]);
+    const r=lcoh({...p,N:pt.N,z:pt.z,q0:q},true);const tot=r.lcoh;
+    $('ro_bar').innerHTML=Array.from(r.parts).map((v,i)=>`<span style="width:${Math.max(0,v/tot*100)}%;background:${PART_COL[i]}" title="${COMP[i]}"></span>`).join('');
+    $('ro_parts').innerHTML=Array.from(r.parts).map((v,i)=>`<i style="background:${PART_COL[i]}"></i><span>${COMP[i]}</span><span>$${v.toFixed(3)}</span>`).join('')+
+      `<i></i><span>Break-even (royalty and tax inside)</span><span><b>$${tot.toFixed(3)}</b></span>`;
+  }else{$('ro_bar').innerHTML='';$('ro_parts').innerHTML='<span></span><span>No rate reaches this cutoff: per-kg costs alone exceed it.</span><span></span>';}
+  $('ro_kv').innerHTML=kv.map(([a,b,f])=>`<dt>${a}</dt><dd${f?' class="flag"':''}>${b}</dd>`).join('');
+}
+let raf=0;function render(){cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{
+  const p=readP(),g=readG();ensureCoeffs(p);const Gd=grids(p,g);drawMap(p,g,Gd);drawCbar();drawLines(p);readout(p,g);labels();});}
+function labels(){const C=cuts();
+  $('pos_o').textContent=posOf(+$('pos').value).toFixed(3);$('Di_o').textContent=(+$('Di').value*100).toFixed(0)+'%';
+  $('b_o').textContent=(+$('b').value).toFixed(2);$('s_o').textContent=$('s').value;$('beta_o').textContent=(+$('beta').value).toFixed(2);
+  $('dl_o').textContent='$'+(+$('dl').value).toFixed(2)+' → $'+C.dl.toFixed(2);$('hmax_o').textContent=(+$('hmax').value).toFixed(1);
+  $('rf_o').textContent=(+$('rf').value).toFixed(2);$('tg_o').textContent=$('tg').value;$('ov_o').textContent=(+$('ov').value).toFixed(2);
+  $('maptitle').textContent='Required initial wellhead rate per producer, '+(mode==='pg'?'$'+C.pg.toFixed(2)+'/kg plant gate':'$'+C.dl.toFixed(2)+'/kg plant gate ($'+C.pg.toFixed(2)+' delivered)');
+  document.querySelectorAll('[data-group=decl] button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.di===+$('Di').value&&+b.dataset.b===+$('b').value)));
+  document.querySelectorAll('.presets[data-for] button').forEach(b=>b.setAttribute('aria-pressed',String(Math.abs(+b.dataset.v-+$(b.parentNode.dataset.for).value)<1e-9)));
+}
+function setDefaults(){$('pos').value=DEF.posv;for(const k of['Di','b','s','beta','dl','hmax','rf','tg','ov'])$(k).value=DEF[k];$('T').value='2.00';sel={N:69,z:1};hover=null;}
+// events
+document.querySelectorAll('aside input').forEach(el=>el.addEventListener('input',render));
+document.querySelectorAll('.presets[data-for] button').forEach(b=>b.addEventListener('click',()=>{$(b.parentNode.dataset.for).value=b.dataset.v;render();}));
+document.querySelectorAll('[data-group=decl] button').forEach(b=>b.addEventListener('click',()=>{$('Di').value=b.dataset.di;$('b').value=b.dataset.b;render();}));
+$('reset').addEventListener('click',()=>{setDefaults();render();});
+for(const[id,m]of[['m_pg','pg'],['m_dl','dl']])$(id).addEventListener('click',()=>{mode=m;$('m_pg').setAttribute('aria-pressed',String(m==='pg'));$('m_dl').setAttribute('aria-pressed',String(m==='dl'));render();});
+function ptFromEvent(e){if(!MAPGEOM)return null;const r=$('map').getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,{M,pw,ph}=MAPGEOM;
+  if(x<M.l||x>M.l+pw||y<M.t||y>M.t+ph)return null;
+  const N=Math.pow(10,Math.log10(NMIN)+(x-M.l)/pw*(Math.log10(NMAX)-Math.log10(NMIN))),z=0.95+(y-M.t)/ph*3.1;return{N:Math.max(NMIN,Math.min(NMAX,N)),z:Math.max(1,Math.min(4,Math.round(z*20)/20))};}
+$('map').addEventListener('pointermove',e=>{const p=ptFromEvent(e);hover=p;render();});
+$('map').addEventListener('pointerleave',()=>{hover=null;render();});
+$('map').addEventListener('click',e=>{const p=ptFromEvent(e);if(p){sel=p;hover=null;render();}});
+new ResizeObserver(render).observe($('map'));
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',render);
+// engine check against the reference TEA
+(function(){const B={N:69,z:1,q0:900e3,Di:0.05,b:0.2,pos:0.2,s:600,beta:1};
+  const a=lcoh(B).lcoh,b2=lcoh({...B,z:2}).lcoh;
+  $('check').innerHTML=`Engine check against the reference TEA: 1 km case <b>$${a.toFixed(4)}</b>/kg (reference $0.6637), 2 km case <b>$${b2.toFixed(4)}</b> (reference $0.8855).`;})();
+setDefaults();render();
+})();
+
+</script>
+</body>
+</html>
